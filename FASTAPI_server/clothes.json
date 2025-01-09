@@ -1,0 +1,74 @@
+[
+    {
+        "id": 1,
+        "name": "Худи Memphis Grizzlies Club",
+        "image_url": "https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/4632ab3d-92b4-435a-b97c-133e52134751/MEM+MNK+CLUB+HDY+PO.png",
+        "description": "Фанаты «Гриззлис», объединяйтесь! Покажите свою любовь к команде в этой толстовке с капюшоном «Мемфис Гриззлис». Он изготовлен из мягкой вязки и согревает вас, болея за свою команду в течение всего сезона.",
+        "model": "FB4764-419",
+        "color": "Темно-синий"
+    },
+    {
+        "id": 2,
+        "name": "Майка Los Angeles Lakers Icon Edition 2022/23",
+        "image_url": "https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/d9aa1b6a-4385-4233-96b6-b03f5c83d1a6/LAL+MNK+DF+SWGMN+JSY+ICN+22.png",
+        "description": "У каждой команды есть свои отличительные цвета, которые выделяют ее среди остальных команд лиги. Отдавая дань богатому наследию баскетбола, футболка «Лос-Анджелес Лейкерс» вдохновлена формой, которую игроки носят на площадке, от командных деталей до легкой влагоотводящей сетки. Он сохраняет вас сухими и прохладными как на поле, так и за его пределами, когда вы болеете за своего любимого игрока и смотрите игру, которую любите.",
+        "model": "DN2009-733",
+        "color": "Желто-синий-белый"
+    },
+    {
+        "id": 3,
+        "name": "Толстовка Jordan Brooklyn Fleece",
+        "image_url": "https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco,u_126ab356-44d8-4a06-89b4-fcdcc8df0245,c_scale,fl_relative,w_1.0,h_1.0,fl_layer_apply/fb6bf327-79e5-4bb5-b5cf-0cf92fac4637/M+J+BRK+FLC+FZ.png",
+        "description": "Что стоит иметь с собой каждый день недели? Удобная толстовка, конечно же. Матовый трикотаж средней плотности делает эту классику чрезвычайно мягкой внутри и гладкой снаружи.",
+        "model": "FV7289-010",
+        "color": "Бежевый"
+    },
+    {
+        "id": 4,
+        "name": "Майка LeBron James Los Angeles Lakers",
+        "image_url": "https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/9dd95692-0141-436d-8f87-96fa92e8c661/LAL+B+NK+NN+SS+TEE+ICON.png",
+        "description": "Болейте за любимого игрока в футболке «Лейкерс». Он имеет повседневный крой и черпает вдохновение в спортивных футболках и украшен смелой графикой с вашим именем и номером.",
+        "model": "FZ8621-728",
+        "color": "Амарилло"
+    },
+    {
+        "id": 5,
+        "name": "Майка Memphis Grizzlies Statement Edition",
+        "image_url": "https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco,u_126ab356-44d8-4a06-89b4-fcdcc8df0245,c_scale,fl_relative,w_1.0,h_1.0,fl_layer_apply/06814b5f-d1ca-4214-886f-c6efcee7f7bf/MEM+MNK+DF+SWGMN+JSY+STM+22.png",
+        "description": "Подражайте своему любимому игроку в этой футболке «Мемфис Гриззлис», созданной для фанатов. В нем есть логотипы и детали, вдохновленные формами, которые носят игроки на поле. Кроме того, дышащая сетка с технологией отвода пота сохраняет вас сухими и прохладными, независимо от того, сходите ли вы с ума на поле или бродите по городу.",
+        "model": "DO9531-422",
+        "color": "Светло-голубой"
+    },
+    {
+        "id": 6,
+        "name": "Штаны Муж 1",
+        "image_url": "https://mysport.by/upload/iblock/e8b/ccgtxsiegyo3lqj52zu11b2b3ff3jsj2.webp",
+        "description": "Тест",
+        "model": "Тест",
+        "color": "Тест"
+    },
+    {
+        "id": 7,
+        "name": "Штаны муж 2",
+        "image_url": "https://mysport.by/upload/iblock/78c/zqf7jr6zzor7f040sxjq64odkkny0uq6.webp",
+        "description": "Тест",
+        "model": "Тест",
+        "color": "Тест"
+    },
+    {
+        "id": 8,
+        "name": "Штаны жен 1",
+        "image_url": "https://mysport.by/upload/iblock/4d2/0gn0ktjr84fzet6hatsick2dilv39ldj.webp",
+        "description": "Тест",
+        "model": "Тест",
+        "color": "Тест"
+    },
+    {
+        "id": 9,
+        "name": "Штаны жен 2",
+        "image_url": "https://mysport.by/upload/iblock/0e6/phuc0fu7sqoakiix8cpjg2nuk7ru6fzm.webp",
+        "description": "Тест",
+        "model": "Тест",
+        "color": "Тест"
+    }
+]
