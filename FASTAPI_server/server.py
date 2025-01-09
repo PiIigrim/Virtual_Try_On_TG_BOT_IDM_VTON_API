@@ -92,7 +92,7 @@ async def process_files(task_id: str, user_photo_path: str, product_image_path: 
         #     seed=42,
         #     api_name="/tryon"
         # )
-        result_gradio = gradio_client.predict(
+        result_gradio = await asyncio.to_thread(gradio_client.predict,
 		      src_image_path=handle_file(user_photo_path),
 		      ref_image_path=handle_file(product_image_path),
 		      ref_acceleration=True,
