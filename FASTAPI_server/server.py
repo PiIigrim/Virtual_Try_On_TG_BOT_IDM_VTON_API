@@ -43,6 +43,7 @@ async def upload_file(
     user_photo_extension: str = Form(...),
     product_image: str = Form(...),
     product_image_extension: str = Form(...),
+    current_index: int = Form(...),
     product_description: str = Form(...),
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
@@ -61,7 +62,7 @@ async def upload_file(
         with open(product_image_path, "wb") as f:
             f.write(product_image_bytes)
 
-        background_tasks.add_task(process_files, task_id, user_photo_path, product_image_path, product_description)
+        background_tasks.add_task(process_files, task_id, user_photo_path, product_image_path, product_description, current_index)
 
         return JSONResponse(content={"task_id": task_id, "message": "Files loading and started processing."})
 
@@ -70,7 +71,7 @@ async def upload_file(
         return JSONResponse(content={"error": "Loading files server error."}, status_code=500)
 
 async def process_files(task_id: str, user_photo_path: str, product_image_path: str,
-                        product_description: str):
+                        product_description: str, current_index: int):
     processing_results[task_id] = {'status': 'processing'}
 
     try:
@@ -82,27 +83,36 @@ async def process_files(task_id: str, user_photo_path: str, product_image_path: 
             processing_results[task_id] = {'status': 'error', 'message': f"File {product_image_path} not found."}
             return
 
-        # result_gradio = await asyncio.to_thread(gradio_client.predict,
-        #     dict={"background": file(user_photo_path)},
-        #     garm_img=file(product_image_path),
-        #     garment_des=product_description,
-        #     is_checked=True,
-        #     is_checked_crop=False,
-        #     denoise_steps=30,
-        #     seed=42,
-        #     api_name="/tryon"
-        # )
-        result_gradio = await asyncio.to_thread(gradio_client.predict,
-		      src_image_path=handle_file(user_photo_path),
-		      ref_image_path=handle_file(product_image_path),
-		      ref_acceleration=True,
-		      step=35,
-		      scale=2.5,
-		      seed=42,
-		      vt_model_type="viton_hd",
-		      vt_garment_type="upper_body",
-		      api_name="/leffa_predict_vt"
-        )
+        with open(config.js_data_url, 'r', encoding='utf-8') as f:
+          products = json.load(f)
+          product_id = products[current_index]['cloth_type']
+          if product_id == "Верх":
+            print("Верх")
+            result_gradio = await asyncio.to_thread(gradio_client.predict,
+		          src_image_path=handle_file(user_photo_path),
+		          ref_image_path=handle_file(product_image_path),
+		          ref_acceleration=True,
+		          step=30,
+		          scale=2.5,
+		          seed=42,
+		          vt_model_type="viton_hd",
+		          vt_garment_type="upper_body",
+		          api_name="/leffa_predict_vt"
+            )
+          elif product_id == "Низ":
+            print("НИЗ")
+            result_gradio = await asyncio.to_thread(gradio_client.predict,
+		          src_image_path=handle_file(user_photo_path),
+		          ref_image_path=handle_file(product_image_path),
+		          ref_acceleration=True,
+		          step=30,
+		          scale=2.5,
+		          seed=42,
+		          vt_model_type="dress_code",
+		          vt_garment_type="lower_body",
+		          api_name="/leffa_predict_vt"
+            )
+        
         
         image_path = result_gradio[0]
         with open(image_path, "rb") as img_file:

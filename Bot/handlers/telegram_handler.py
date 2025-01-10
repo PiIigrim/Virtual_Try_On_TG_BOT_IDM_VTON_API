@@ -130,7 +130,7 @@ class TelegramHandler:
             user_photo_base64 = base64.b64encode(user_photo_bytes).decode('utf-8')
             product_image_base64 = base64.b64encode(product_image_bytes).decode('utf-8')
             response = await self.upload_service.upload_files(user_photo_base64, user_photo_extension, product_image_base64, 
-                                                              os.path.splitext(selected_product.image_url)[1], product_info)
+                                                              os.path.splitext(selected_product.image_url)[1], current_index, product_info)
             
             if response and response.get('task_id'):
                 await self.send_message(update, "✅ Файл загружен. Начинаю обработку...")

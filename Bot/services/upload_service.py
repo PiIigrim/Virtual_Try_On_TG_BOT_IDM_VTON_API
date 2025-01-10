@@ -9,7 +9,7 @@ class UploadService:
         self.upload_url: str = upload_url
     
     async def upload_files(self, user_photo_base64: str, user_photo_extension: str, product_image_base64: str, 
-                           product_image_extension: str, product_info: dict) -> dict:
+                           product_image_extension: str, current_index: int, product_info: dict) -> dict:
         """Upload user photo and product image to the server and return the response."""
         try:
             async with httpx.AsyncClient() as client:
@@ -18,6 +18,7 @@ class UploadService:
                     "user_photo_extension": user_photo_extension,
                     "product_image": product_image_base64,
                     "product_image_extension": product_image_extension,
+                    "current_index": current_index,
                     **product_info
                 })
                 response.raise_for_status()
