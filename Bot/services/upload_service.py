@@ -1,6 +1,5 @@
 import httpx
 import logging
-import base64
 
 class UploadService:
     """Service for handling file uploads."""
