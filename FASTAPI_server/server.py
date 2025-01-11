@@ -172,14 +172,14 @@ async def process_files(task_id: str, user_photo_path: str, product_image_path: 
             return
 
         cropped_image = crop_person(user_photo_path)
+        cv2.imwrite(user_photo_path, cropped_image)
 
         with open(config.js_data_url, 'r', encoding='utf-8') as f:
           products = json.load(f)
           product_id = products[current_index]['cloth_type']
           if product_id == "Верх":
-            print("Верх")
             result_gradio = await asyncio.to_thread(gradio_client.predict,
-		          src_image_path=handle_file(cropped_image),
+		          src_image_path=handle_file(user_photo_path),
 		          ref_image_path=handle_file(product_image_path),
 		          ref_acceleration=True,
 		          step=30,
@@ -190,7 +190,6 @@ async def process_files(task_id: str, user_photo_path: str, product_image_path: 
 		          api_name="/leffa_predict_vt"
             )
           elif product_id == "Низ":
-            print("НИЗ")
             result_gradio = await asyncio.to_thread(gradio_client.predict,
 		          src_image_path=handle_file(user_photo_path),
 		          ref_image_path=handle_file(product_image_path),
