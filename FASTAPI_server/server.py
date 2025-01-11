@@ -1,5 +1,6 @@
-from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
+from fastapi import FastAPI, Form, BackgroundTasks
 from fastapi.responses import JSONResponse
+from Bot.helpers.img_crop import crop_person
 from logger import setup_logger
 import json
 import os
@@ -9,6 +10,7 @@ import asyncio
 import logging
 from config import Config
 import base64
+import cv2
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
 UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads')
@@ -83,13 +85,15 @@ async def process_files(task_id: str, user_photo_path: str, product_image_path: 
             processing_results[task_id] = {'status': 'error', 'message': f"File {product_image_path} not found."}
             return
 
+        cropped_image = crop_person(user_photo_path)
+
         with open(config.js_data_url, 'r', encoding='utf-8') as f:
           products = json.load(f)
           product_id = products[current_index]['cloth_type']
           if product_id == "Верх":
             print("Верх")
             result_gradio = await asyncio.to_thread(gradio_client.predict,
-		          src_image_path=handle_file(user_photo_path),
+		          src_image_path=handle_file(cropped_image),
 		          ref_image_path=handle_file(product_image_path),
 		          ref_acceleration=True,
 		          step=30,

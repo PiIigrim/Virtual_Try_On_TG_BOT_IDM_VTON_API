@@ -3,15 +3,6 @@ from ultralytics import YOLO
 import mediapipe as mp
 
 def is_full_body(image_path):
-    """
-    Определяет, изображен ли человек в полный рост на изображении, проверяя наличие ступней.
-
-    Args:
-        image_path (str): Путь к изображению.
-
-    Returns:
-        bool: True, если ступни видны, иначе False.
-    """
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=True, model_complexity=2)
 
@@ -37,7 +28,7 @@ def is_full_body(image_path):
         return False
     
     pose.close()
-    
+
     if left_ankle_visible or right_ankle_visible:
         return True
     else:
@@ -45,18 +36,8 @@ def is_full_body(image_path):
 
 
 def crop_person(image_path, crop_ratio=0.2):
-    """
-    Автоматически обрезает изображение человека, определяя режим обрезки.
-
-    Args:
-        image_path (str): Путь к изображению.
-        crop_ratio (float): Относительное расстояние от нижней границы bbox для обрезки.
-
-    Returns:
-        cv2.Mat: Обрезанное изображение или None, если человек не обнаружен.
-    """
     try:
-        model = YOLO("yolo11n.pt")
+        model = YOLO("yolov8n.pt")
     except Exception as e:
         print(f"Error loading model: {e}")
         return None
@@ -111,15 +92,3 @@ def crop_person(image_path, crop_ratio=0.2):
         return cropped_image
     else:
         return None
-
-if __name__ == "__main__":
-    image_path = "CUT_christie-ivory-criss-cross-ribbed-tank-top-shi-beige-tan-baggy-parachute-pants-03.jpg"  # Replace with the path to your image
-    cropped_image = crop_person(image_path)
-
-    if cropped_image is not None:
-        cv2.imshow("Cropped Image", cropped_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        cv2.imwrite("output.jpg", cropped_image)
-    else:
-        print("Failed to crop image")
