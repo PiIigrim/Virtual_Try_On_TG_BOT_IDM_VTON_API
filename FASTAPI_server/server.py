@@ -9,8 +9,7 @@ import asyncio
 import logging
 from config import Config
 import base64
-from img_utils import crop_person, insert_modified_image
-import cv2
+from img_utils import crop_person
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
 UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads')
@@ -90,9 +89,7 @@ async def process_files(task_id: str, user_photo_path: str, product_image_path: 
           products = json.load(f)
           product_id = products[current_index]['cloth_type']
           if product_id == "Верх":
-            cropped_image, coords = crop_person(user_photo_path, base_crop=False)
-            x1, y1, _, _ = coords
-            original_image = cv2.imread(image_path)
+            crop_person(user_photo_path, base_crop=False)
             result_gradio = await asyncio.to_thread(gradio_client.predict,
 		          src_image_path=handle_file(user_photo_path),
 		          ref_image_path=handle_file(product_image_path),
@@ -105,9 +102,7 @@ async def process_files(task_id: str, user_photo_path: str, product_image_path: 
 		          api_name="/leffa_predict_vt"
             )
           elif product_id == "Низ":
-            cropped_image, coords = crop_person(user_photo_path, base_crop=True)
-            x1, y1, _, _ = coords
-            original_image = cv2.imread(image_path)
+            crop_person(user_photo_path, base_crop=True)
             result_gradio = await asyncio.to_thread(gradio_client.predict,
 		          src_image_path=handle_file(user_photo_path),
 		          ref_image_path=handle_file(product_image_path),
@@ -132,9 +127,7 @@ async def process_files(task_id: str, user_photo_path: str, product_image_path: 
         with open(final_processed_image_path, "wb") as f:
             f.write(processed_image_data)
 
-        final_image = insert_modified_image(original_image, cv2.imread(final_processed_image_path), x1, y1)
-
-        processing_results[task_id] = {'status': 'completed', 'result': final_image}
+        processing_results[task_id] = {'status': 'completed', 'result': processed_image_base64}
 
     except Exception as e:
         logging.error("Error during processing for task %s: %s", task_id, e)

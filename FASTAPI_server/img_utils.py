@@ -34,10 +34,6 @@ def is_full_body(image_path):
     else:
         return False
 
-def insert_modified_image(original_image, modified_image, x1, y1):
-    original_image[y1:y1 + modified_image.shape[0], x1:x1 + modified_image.shape[1]] = modified_image
-    return original_image
-
 def crop_person(image_path, base_crop = True, crop_ratio=0.2):
     try:
         model = YOLO("yolo11n.pt")
@@ -89,6 +85,6 @@ def crop_person(image_path, base_crop = True, crop_ratio=0.2):
         
         cv2.imwrite(image_path, cropped_image)
 
-        return cropped_image, (x1, y1, x2, y2)
+        return cropped_image
     else:
-        return None, None
+        return None
