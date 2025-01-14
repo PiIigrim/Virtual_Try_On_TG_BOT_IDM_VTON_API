@@ -33,8 +33,12 @@ def is_full_body(image_path):
         return True
     else:
         return False
-    
-def crop_person(image_path, base_crop, crop_ratio=0.2):
+
+def insert_modified_image(original_image, modified_image, x1, y1):
+    original_image[y1:y1 + modified_image.shape[0], x1:x1 + modified_image.shape[1]] = modified_image
+    return original_image
+
+def crop_person(image_path, base_crop = True, crop_ratio=0.2):
     try:
         model = YOLO("yolo11n.pt")
     except Exception as e:
@@ -82,9 +86,9 @@ def crop_person(image_path, base_crop, crop_ratio=0.2):
         else:
             knee_level = int(y1 + height * 0.65)
             cropped_image = image[y1:knee_level, x1:x2]
-
+        
         cv2.imwrite(image_path, cropped_image)
-            
-        return cropped_image
+
+        return cropped_image, (x1, y1, x2, y2)
     else:
-        return None
+        return None, None
