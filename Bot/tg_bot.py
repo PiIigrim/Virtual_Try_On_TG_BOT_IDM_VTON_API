@@ -4,20 +4,21 @@ from logger import setup_logger
 from handlers.telegram_handler import TelegramHandler
 from services.product_service import ProductService
 from services.upload_service import UploadService
+import asyncio
 
 def main() -> None:
     """Main function to run the Telegram bot."""
-    
+
     setup_logger()
     config = Config()
 
     application = ApplicationBuilder().token(config.telegram_bot_token).build()
 
-    product_service = ProductService(config.api_base_url)  
+    product_service = ProductService(config.api_base_url)
     upload_service = UploadService(config.fastapi_upload_url)
-    
-    telegram_handler = TelegramHandler(product_service=product_service, 
-                                       upload_service=upload_service, 
+
+    telegram_handler = TelegramHandler(product_service=product_service,
+                                       upload_service=upload_service,
                                        base_url_api=config.api_base_url)
 
     application.add_handler(CommandHandler("start", telegram_handler.start_menu))
@@ -27,6 +28,9 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, telegram_handler.handle_text))
 
     application.run_polling()
+
+    loop = asyncio.get_event_loop()
+    loop.create_task(telegram_handler.get_products())
 
 if __name__ == "__main__":
     main()

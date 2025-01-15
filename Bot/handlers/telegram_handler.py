@@ -4,6 +4,7 @@ import base64
 import httpx
 import asyncio
 import time
+import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import ContextTypes
 from services.product_service import ProductService
@@ -19,8 +20,10 @@ class TelegramHandler:
         self.upload_service = upload_service
         self.base_url_api = base_url_api
         self.products = []
+        self.products_cache_time = 0
+        self.products_cache_duration = 3600
         self.waiting_for_photo = False
-
+        
         self.command_map = {
             'start': self.start_menu,
             'next_product': self.next_product,
@@ -33,20 +36,22 @@ class TelegramHandler:
             'show_catalog':self.show_catalog
         }
 
+    async def get_products(self):
+        """Fetches products, using cache if available and not expired."""
+        if not self.products or time.time() - self.products_cache_time > self.products_cache_duration:
+            self.products = await self.product_service.fetch_products()
+            self.products_cache_time = time.time()
+        return self.products
+
     async def start_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Initializes the start menu for the Telegram bot of the online store assistant."""
         self.waiting_for_photo = False
-        if not self.products:
-            self.products = await self.product_service.fetch_products()
+        products = await self.get_products()
 
-        context.user_data['current_product_index'] = 0
+        if not products:
+            await self.send_message(update, context, "❌ Ассортимент не найдены. Пожалуйста, попробуйте позже.")
 
-        if not self.products:
-            if update.message:
-                await update.message.reply_text("❌ Ассортимент не найдены. Пожалуйста, попробуйте позже.")
-            else:
-                await update.callback_query.message.reply_text("❌ Ассортимент не найдены. Пожалуйста, попробуйте позже.")
-            return 
+        context.user_data['current_product_index'] = 0 
 
         welcome_text = (
             "👋 Привет! Я ваш помощник в онлайн-магазине.\n"
@@ -55,25 +60,34 @@ class TelegramHandler:
         )
 
         keyboard = self.get_main_menu_keyboard()
-        await self.send_message(update, welcome_text, keyboard)
+        await self.send_message(update, context, welcome_text, keyboard)
 
-    async def send_message(self, update: Update, text: str, reply_markup=None):
-        """Sends a message to the user, either in response to a callback query or as a regular message."""
+    async def send_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, reply_markup=None):
+        """Sends a message to the user. Uses context.bot for sending."""
+        chat_id = update.effective_chat.id
         if update.callback_query:
             await update.callback_query.answer()
-            await update.callback_query.message.reply_text(text, reply_markup=reply_markup)
-        else:
-            await update.message.reply_text(text, reply_markup=reply_markup)
+        await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
 
-    async def handle_text(self, update: Update) -> None:
+    async def handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handles text messages from the user."""
-        await self.send_message(update, "Извините, я не понимаю текстовые команды. Пожалуйста, используйте кнопки меню.")
+        await self.send_message(update, context, "Извините, я не понимаю текстовые команды. Пожалуйста, используйте кнопки меню.")
 
-    async def edit_message(self, update: Update, media: InputMediaPhoto, caption: str, reply_markup: InlineKeyboardMarkup):
+    async def edit_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE, media: InputMediaPhoto, caption: str, reply_markup: InlineKeyboardMarkup):
         """Edits an existing message with new media and caption."""
         await update.callback_query.answer()
-        await update.callback_query.message.edit_media(media=media, reply_markup=reply_markup)
-        await update.callback_query.message.edit_caption(caption=caption, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+        try:
+            if update.callback_query.message:
+                await context.bot.edit_message_media(chat_id=update.effective_chat.id, message_id=update.callback_query.message.message_id, media=media, reply_markup=reply_markup)
+                await context.bot.edit_message_caption(chat_id=update.effective_chat.id, message_id=update.callback_query.message.message_id, caption=caption, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
+        except telegram.error.BadRequest as e:
+            if "Message is not modified" in str(e):
+                logging.info("Message was not modified: %s", e)
+            elif "Message to edit not found" in str(e):
+                logging.warning("Message to edit not found: %s", e)
+                await self.send_message(update, context, "Сообщение не найдено, возможно, оно было удалено.", reply_markup=reply_markup)
+            else:
+                logging.error("Failed to edit message: %s", e)
 
     def get_main_menu_keyboard(self):
         """Returns the main menu keyboard."""
@@ -83,7 +97,7 @@ class TelegramHandler:
         ]
         return InlineKeyboardMarkup(keyboard)
 
-    async def help_command(self, update: Update):
+    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handles the help command by providing information about the bot's functionalities and sending a help message with options."""
         keyboard = self.get_help_menu_keyboard()
         help_text = (
@@ -93,7 +107,7 @@ class TelegramHandler:
             "2. Отправка фотографий для обработки.\n"
             "3. Получение помощи по использованию бота."
         )
-        await self.send_message(update, help_text, keyboard)
+        await self.send_message(update, context, help_text, keyboard)
 
     def get_help_menu_keyboard(self):
         """Creates and returns the help menu keyboard for the Telegram bot."""
@@ -104,33 +118,33 @@ class TelegramHandler:
         ]
         return InlineKeyboardMarkup(keyboard)
 
-    async def how_to_send_photo(self, update: Update):
+    async def how_to_send_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Instructs the user on how to send a photo for processing."""
-        await self.send_message(update, "📸 Чтобы отправить изображение, выберите продукт и отправьте фото в формате JPG или PNG.")
+        await self.send_message(update, context, "📸 Чтобы отправить изображение, выберите продукт и отправьте фото в формате JPG или PNG.")
 
-    async def handle_list_of_products(self, update: Update):
+    async def handle_list_of_products(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handles the request to list available products."""
         if not self.products:
-            await self.send_message(update, "❌ Не удалось получить список товаров.")
+            await self.send_message(update, context, "❌ Не удалось получить список товаров.")
             return
         
         product_list = "\n".join([f"{i+1}. {product.name}" for i, product in enumerate(self.products)])
-        await self.send_message(update, f"🛍️ Доступные товары:\n{product_list}")
+        await self.send_message(update, context, f"🛍️ Доступные товары:\n{product_list}")
 
     async def handle_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handles the reception and processing of a user's photo."""
         if not self.waiting_for_photo:
-            await self.send_message(update, "Пожалуйста, сначала выберите продукт, используя кнопки меню.")
+            await self.send_message(update, context, "Пожалуйста, сначала выберите продукт, используя кнопки меню.")
             return
 
         self.waiting_for_photo = False
-        await self.send_message(update, "⏳ Получаю ваше изображение...")
+        await self.send_message(update, context, "⏳ Получаю ваше изображение...")
         
         current_index = context.user_data.get('current_product_index', 0)
         selected_product = self.products[current_index]
 
         if not selected_product:
-            await self.send_message(update, "❌ Сначала выберите продукт.")
+            await self.send_message(update, context, "❌ Сначала выберите продукт.")
             return
         
         try:
@@ -139,7 +153,7 @@ class TelegramHandler:
             user_photo_extension = os.path.splitext(user_photo_file.file_path)[1].lower()
 
             if user_photo_extension not in ['.png', '.jpg', '.jpeg']:
-                await self.send_message(update, "❌ Пожалуйста, загрузите фото в формате JPG или PNG.")
+                await self.send_message(update, context, "❌ Пожалуйста, загрузите фото в формате JPG или PNG.")
                 return
             
             product_info = {'product_description': selected_product.description}
@@ -151,14 +165,14 @@ class TelegramHandler:
                                                               os.path.splitext(selected_product.image_url)[1], current_index, product_info)
             
             if response and response.get('task_id'):
-                await self.send_message(update, "✅ Файл загружен. Начинаю обработку...")
+                await self.send_message(update, context, "✅ Файл загружен. Начинаю обработку...")
                 await self.poll_status(update, response['task_id'], context)
             else:
-                await self.send_message(update, "❌ Ошибка при загрузке файла.")
+                await self.send_message(update, context, "❌ Ошибка при загрузке файла.")
         
         except Exception as e:
             logging.error(f"Error: {e}")
-            await self.send_message(update, "❌ Произошла ошибка. Попробуйте снова.")
+            await self.send_message(update, context, "❌ Произошла ошибка. Попробуйте снова.")
 
     async def poll_status(self, update: Update, task_id, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Polls the status of the image processing task and updates the user on the progress."""
@@ -178,27 +192,27 @@ class TelegramHandler:
                         img_bytes = base64.b64decode(processed_image_base64)
                         await update.message.reply_photo(photo=img_bytes)
                         await asyncio.sleep(3)
-                        await self.send_message(update, "✅ Status: Обработка завершена!")
+                        await self.send_message(update, context, "✅ Status: Обработка завершена!")
                         await self.show_catalog(update, context)
                         return
 
                     elif status_data['status'] == 'error':
-                        await self.send_message(update, "❌ Status: Ошибка на стороне IDM-VTON API. Повторите позже.")
+                        await self.send_message(update, context, "❌ Status: Ошибка на стороне IDM-VTON API. Повторите позже.")
                         await asyncio.sleep(1)
                         await self.show_catalog(update, context)
                         return
                     else:
-                        await self.send_message(update, "⏳ Status: в обоработке...")
+                        await self.send_message(update, context, "⏳ Status: в обоработке...")
 
             except httpx.RequestError as e:
                 logging.error(f"Request error while checking status for task {task_id}: {e}")
-                await self.send_message(update, "❌ Status: Ошибка при получении статуса. Повторите позже.")
+                await self.send_message(update, context, "❌ Status: Ошибка при получении статуса. Повторите позже.")
                 return
             except Exception as e:
                 logging.error(f"Unexpected error for task {task_id}: {e}")
-                await self.send_message(update, "❌ Status: Неизвестная ошибка. Повторите позже.")
+                await self.send_message(update, context, "❌ Status: Неизвестная ошибка. Повторите позже.")
                 return
-                
+
         await self.send_message(update, context, "❌ Status: Превышено время ожидания ответа от сервера.")
         await self.show_catalog(update, context)
         
@@ -207,7 +221,7 @@ class TelegramHandler:
         current_index = context.user_data.get('current_product_index', 0)
 
         if current_index < 0 or current_index >= len(self.products):
-            await self.send_message(update, "❌ Продукт не найден.")
+            await self.send_message(update, context, "❌ Продукт не найден.")
             return
 
         product = self.products[current_index]
@@ -223,7 +237,7 @@ class TelegramHandler:
         if update.callback_query and update.callback_query.message:
             # Редактируем существующее сообщение
             media = InputMediaPhoto(media=product.image_url, caption=product_text)
-            await self.edit_message(update, media, product_text, keyboard)
+            await self.edit_message(update, context, media, product_text, keyboard)
         else:
             # Отправляем новое сообщение, если callback_query отсутствует
             await update.message.reply_photo(
@@ -256,7 +270,7 @@ class TelegramHandler:
     async def select_product(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Selects the current product and prompts the user to send a photo for processing."""
         product = self.products[context.user_data['current_product_index']]
-        await self.send_message(update, f"✅ Вы выбрали: {product.name}.\n*Теперь отправьте фото в jpeg/jpg/png*")
+        await self.send_message(update, context, f"✅ Вы выбрали: {product.name}.\n*Теперь отправьте фото в jpeg/jpg/png*")
         self.waiting_for_photo = True
 
     async def handle_button_click(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -270,4 +284,4 @@ class TelegramHandler:
                 self.waiting_for_photo = False
           await command(update, context)
         else:
-            await self.send_message(update, "❌ Неизвестная команда.")
+            await self.send_message(update, context, "❌ Неизвестная команда.")
