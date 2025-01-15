@@ -3,6 +3,7 @@ import os
 import base64
 import httpx
 import asyncio
+import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import ContextTypes
 from services.product_service import ProductService
@@ -64,7 +65,7 @@ class TelegramHandler:
         else:
             await update.message.reply_text(text, reply_markup=reply_markup)
 
-    async def handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def handle_text(self, update: Update) -> None:
         """Handles text messages from the user."""
         await self.send_message(update, "Извините, я не понимаю текстовые команды. Пожалуйста, используйте кнопки меню.")
 
@@ -82,7 +83,7 @@ class TelegramHandler:
         ]
         return InlineKeyboardMarkup(keyboard)
 
-    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def help_command(self, update: Update):
         """Handles the help command by providing information about the bot's functionalities and sending a help message with options."""
         keyboard = self.get_help_menu_keyboard()
         help_text = (
@@ -103,11 +104,11 @@ class TelegramHandler:
         ]
         return InlineKeyboardMarkup(keyboard)
 
-    async def how_to_send_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def how_to_send_photo(self, update: Update):
         """Instructs the user on how to send a photo for processing."""
         await self.send_message(update, "📸 Чтобы отправить изображение, выберите продукт и отправьте фото в формате JPG или PNG.")
 
-    async def handle_list_of_products(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def handle_list_of_products(self, update: Update):
         """Handles the request to list available products."""
         if not self.products:
             await self.send_message(update, "❌ Не удалось получить список товаров.")
@@ -161,8 +162,10 @@ class TelegramHandler:
 
     async def poll_status(self, update: Update, task_id, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Polls the status of the image processing task and updates the user on the progress."""
-        processing = True
-        while processing:
+        timeout = 100
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
             await asyncio.sleep(7)
             try:
                 async with httpx.AsyncClient() as client:
@@ -174,27 +177,30 @@ class TelegramHandler:
                         processed_image_base64 = status_data['result']
                         img_bytes = base64.b64decode(processed_image_base64)
                         await update.message.reply_photo(photo=img_bytes)
-                        await asyncio.sleep(1)
+                        await asyncio.sleep(3)
                         await self.send_message(update, "✅ Status: Обработка завершена!")
                         await self.show_catalog(update, context)
-                        processing = False
+                        return
 
                     elif status_data['status'] == 'error':
                         await self.send_message(update, "❌ Status: Ошибка на стороне IDM-VTON API. Повторите позже.")
-                        await asyncio.sleep(3)
+                        await asyncio.sleep(1)
                         await self.show_catalog(update, context)
-                        processing = False
+                        return
                     else:
                         await self.send_message(update, "⏳ Status: в обоработке...")
 
             except httpx.RequestError as e:
                 logging.error(f"Request error while checking status for task {task_id}: {e}")
                 await self.send_message(update, "❌ Status: Ошибка при получении статуса. Повторите позже.")
-                processing = False
+                return
             except Exception as e:
                 logging.error(f"Unexpected error for task {task_id}: {e}")
                 await self.send_message(update, "❌ Status: Неизвестная ошибка. Повторите позже.")
-                processing = False
+                return
+                
+        await self.send_message(update, context, "❌ Status: Превышено время ожидания ответа от сервера.")
+        await self.show_catalog(update, context)
         
     async def show_catalog(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Displays the current product from the catalog to the user."""
@@ -261,7 +267,7 @@ class TelegramHandler:
         command = self.command_map.get(query)
         if command:
           if query != 'select_product':
-            self.waiting_for_photo = False
+                self.waiting_for_photo = False
           await command(update, context)
         else:
             await self.send_message(update, "❌ Неизвестная команда.")
