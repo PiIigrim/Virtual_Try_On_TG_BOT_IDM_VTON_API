@@ -3,7 +3,7 @@ import os
 import base64
 import httpx
 import asyncio
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import ContextTypes
 from services.product_service import ProductService
 from services.upload_service import UploadService
@@ -61,6 +61,12 @@ class TelegramHandler:
             await update.callback_query.message.reply_text(text, reply_markup=reply_markup)
         else:
             await update.message.reply_text(text, reply_markup=reply_markup)
+
+    async def edit_message(self, update: Update, media: InputMediaPhoto, caption: str, reply_markup: InlineKeyboardMarkup):
+        """Редактирование сообщения-каталога"""
+        await update.callback_query.answer()
+        await update.callback_query.message.edit_media(media=media, reply_markup=reply_markup)
+        await update.callback_query.message.edit_caption(caption=caption, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
 
     def get_main_menu_keyboard(self):
         """Returns the main menu keyboard."""
@@ -198,13 +204,11 @@ class TelegramHandler:
         keyboard = self.get_product_keyboard()
 
         if update.callback_query and update.callback_query.message:
-            await update.callback_query.message.reply_photo(
-                photo=product.image_url,
-                caption=product_text,
-                reply_markup=keyboard,
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
+            # Редактируем существующее сообщение
+            media = InputMediaPhoto(media=product.image_url, caption=product_text)
+            await self.edit_message(update, media, product_text, keyboard)
         else:
+            # Отправляем новое сообщение, если callback_query отсутствует
             await update.message.reply_photo(
                 photo=product.image_url,
                 caption=product_text,
