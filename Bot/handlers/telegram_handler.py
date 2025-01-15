@@ -18,6 +18,7 @@ class TelegramHandler:
         self.upload_service = upload_service
         self.base_url_api = base_url_api
         self.products = []
+        self.waiting_for_photo = False
 
         self.command_map = {
             'start': self.start_menu,
@@ -33,6 +34,7 @@ class TelegramHandler:
 
     async def start_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Initializes the start menu for the Telegram bot of the online store assistant."""
+        self.waiting_for_photo = False
         if not self.products:
             self.products = await self.product_service.fetch_products()
 
@@ -62,8 +64,12 @@ class TelegramHandler:
         else:
             await update.message.reply_text(text, reply_markup=reply_markup)
 
+    async def handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handles text messages from the user."""
+        await self.send_message(update, "Извините, я не понимаю текстовые команды. Пожалуйста, используйте кнопки меню.")
+
     async def edit_message(self, update: Update, media: InputMediaPhoto, caption: str, reply_markup: InlineKeyboardMarkup):
-        """Редактирование сообщения-каталога"""
+        """Edits an existing message with new media and caption."""
         await update.callback_query.answer()
         await update.callback_query.message.edit_media(media=media, reply_markup=reply_markup)
         await update.callback_query.message.edit_caption(caption=caption, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN_V2)
@@ -112,6 +118,11 @@ class TelegramHandler:
 
     async def handle_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handles the reception and processing of a user's photo."""
+        if not self.waiting_for_photo:
+            await self.send_message(update, "Пожалуйста, сначала выберите продукт, используя кнопки меню.")
+            return
+
+        self.waiting_for_photo = False
         await self.send_message(update, "⏳ Получаю ваше изображение...")
         
         current_index = context.user_data.get('current_product_index', 0)
@@ -152,7 +163,7 @@ class TelegramHandler:
         """Polls the status of the image processing task and updates the user on the progress."""
         processing = True
         while processing:
-            await asyncio.sleep(12)
+            await asyncio.sleep(7)
             try:
                 async with httpx.AsyncClient() as client:
                     status_response = await client.get(f"{self.base_url_api}/status/{task_id}")
@@ -163,7 +174,7 @@ class TelegramHandler:
                         processed_image_base64 = status_data['result']
                         img_bytes = base64.b64decode(processed_image_base64)
                         await update.message.reply_photo(photo=img_bytes)
-                        await asyncio.sleep(3)
+                        await asyncio.sleep(1)
                         await self.send_message(update, "✅ Status: Обработка завершена!")
                         await self.show_catalog(update, context)
                         processing = False
@@ -240,6 +251,7 @@ class TelegramHandler:
         """Selects the current product and prompts the user to send a photo for processing."""
         product = self.products[context.user_data['current_product_index']]
         await self.send_message(update, f"✅ Вы выбрали: {product.name}.\n*Теперь отправьте фото в jpeg/jpg/png*")
+        self.waiting_for_photo = True
 
     async def handle_button_click(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handles button click events from the inline keyboard and routes to the appropriate command."""
@@ -248,6 +260,8 @@ class TelegramHandler:
 
         command = self.command_map.get(query)
         if command:
-            await command(update, context)
+          if query != 'select_product':
+            self.waiting_for_photo = False
+          await command(update, context)
         else:
             await self.send_message(update, "❌ Неизвестная команда.")

@@ -24,6 +24,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", telegram_handler.help_command))
     application.add_handler(MessageHandler(filters.PHOTO, telegram_handler.handle_photo))
     application.add_handler(CallbackQueryHandler(telegram_handler.handle_button_click))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, telegram_handler.handle_text))
 
     application.run_polling()
 
